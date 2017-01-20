@@ -12,7 +12,8 @@ apt-get -qq install --yes --no-install-recommends \
     openssl \
     pcregrep \
     sudo \
-    supervisor
+    supervisor \
+    netcat-openbsd
 
 function download(){
     path=$1

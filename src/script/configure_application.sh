@@ -131,6 +131,25 @@ function riak_cs_create_admin(){
         if [ -n "${RIAK_CS_KEY_ACCESS}" ] && [ -n "${RIAK_CS_KEY_SECRET}" ]; then
             local key_access="${RIAK_CS_KEY_ACCESS}"
             local key_secret="${RIAK_CS_KEY_SECRET}"
+
+            retries=0
+            user_success=false
+            while [ $user_success == false ] && [ $retries -lt 5 ]; do
+
+                user_status=$(/usr/lib/riak-cs/erts-5.10.3/bin/erl -noshell -name n@127.0.0.1 -setcookie riak -eval "io:format(\"~p\", [rpc:call('riak-cs@127.0.0.1', riak_cs_user, create_user, [\"name\", \"admin@s3.amazonaws.dev\", \"${key_access}\", \"${key_secret}\"])])." -s init stop)
+                
+                user_check=$(echo $user_status | pcregrep -o '{ok,')
+                if [ -z ${user_check} ]; then
+                    retries=$((retries+1))
+                    echo "Could not create user with preset credentials. Response:"
+                    echo "${user_status}"
+                    echo "Retry $retries"
+                else
+                    echo "Created user with preset credentials. Response:"
+                    echo "${user_status}"
+                    user_success=true
+                fi
+            done
         else
 
             # Because we call this right after starting riak services, this sometimes fails with 500 status,
@@ -235,3 +254,6 @@ basho_service_start 'riak-cs' 'Riak CS'
 
 riak_cs_create_admin
 riak_cs_create_buckets
+
+echo 'Boot Complete, Opening TCP port 12345 to let others know.'
+nc -l -k 12345 &
